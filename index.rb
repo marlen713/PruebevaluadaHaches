@@ -2,30 +2,68 @@ require "uri"
 require "net/http"
 require "json"
 
-# Crear un método llamado buid_web_page que reciba el hash de respuesta con todos los datos y construya una página web. 
+# Crear el método request que reciba una url y el api_key y devuelva el hash con los resultados.
+api_url = "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?sol=1000&api_key="
+api_key = "YYNx842FDVtBVAAiWjBviNKaNjwuD969Xn4h6bMl"
 
+def request(api_url, api_key)
+  url = api_url + api_key
+  url = URI(url)
+  
+  https = Net::HTTP.new(url.host, url.port)
+  https.use_ssl = true
+  request = Net::HTTP::Get.new(url)
+  
+  response = https.request(request)
+  result = JSON.parse(response.read_body)
+end
+data = request(api_url, api_key)
 
-def buid_web_page(url)
-    url = URI(url)
+# Crear un método llamado build_web_page que reciba el hash de respuesta con todos los datos y construya una una página web. 
 
-    https = Net::HTTP.new(url.host, url.port)
-    https.use_ssl = true
-    request = Net::HTTP::Get.new(url)
-
-    response = https.request(request)
-    results = JSON.parse(response.read_body) 
+def build_web_page(data)
+  # de acuerdo con lo señalado, sólo se usarán pocas imágenes. Em mi caso son 10.-
+  images = data["photos"][0..9].map do |image|
+    image["img_src"]
+  end
+  html = "
+  <html>
+  <head>
+  </head>
+  <body>
+  <ul>
+  "
+  images.each do |image|
+    html += "<li><img src='#{image}'></li>\n"
+  end
+  
+  html += "
+  </ul>
+  </body>
+  </html>
+  "
+  File.write('index.html', html)
 end
 
-data = buid_web_page("https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?sol=1000&api_key=YYNx842FDVtBVAAiWjBviNKaNjwuD969Xn4h6bMl")
-#recorremos la respuesta
-photos = data.map do |photo|
-    photo["camera"] 
+build_web_page(data)
 
-end
-html = ""
-photos.each do |photo|
-        html += "<img src=#{photo}>\n"
-end
+# Pregunta bonus: Crear un método photos_count que reciba el hash de respuesta y devuelva un nuevo hash con el nombre de la cámara y la cantidad de fotos.
 
-    File.write('index.html', html) 
-    
+def photos_count(data)
+ hash = {}
+  cameras = data["photos"].each do |camera|
+    camera["camera"].each do |key, value|
+      if key == "name"
+        if hash[value]
+          hash[value] += 1
+        else
+          hash[value] = 1 
+        end
+      end
+    end
+  end
+print hash
+end
+photos_count (data)
+
+
